@@ -81,7 +81,7 @@ export default function CitationDialog({
                   Tu navegador no soporta la reproducción de video.
                 </video>
               </div>
-              <div className="flex gap-4 text-xs text-gray-500 mt-2">
+              <div className="text-xs text-gray-500 mt-2">
                 <a
                   href={getProxyPath(partition, chunk.links.self_video_stream.href)}
                   target="_blank"
@@ -90,15 +90,6 @@ export default function CitationDialog({
                 >
                   Abrir en nueva pestaña
                 </a>
-                {chunk.links.self_video_download && (
-                  <a
-                    href={getProxyPath(partition, chunk.links.self_video_download.href)}
-                    download
-                    className="text-blue-500 hover:underline"
-                  >
-                    Descargar video
-                  </a>
-                )}
               </div>
             </div>
           )}
