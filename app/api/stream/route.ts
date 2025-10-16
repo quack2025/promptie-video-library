@@ -33,11 +33,19 @@ export async function GET(request: NextRequest) {
   }
 
   try {
+    // Forward Range header if present (critical for video seeking on mobile)
+    const requestHeaders: Record<string, string> = {
+      authorization: `Bearer ${process.env.RAGIE_API_KEY}`,
+      partition: params.partition,
+    };
+
+    const rangeHeader = request.headers.get('range');
+    if (rangeHeader) {
+      requestHeaders['range'] = rangeHeader;
+    }
+
     const upstreamResponse = await fetch(params.url, {
-      headers: {
-        authorization: `Bearer ${process.env.RAGIE_API_KEY}`,
-        partition: params.partition,
-      },
+      headers: requestHeaders,
     });
 
     // If there's no body, bail out:
@@ -70,7 +78,18 @@ export async function GET(request: NextRequest) {
       headers,
     });
   } catch (error) {
-    console.error("Error in transcription stream route:", error);
-    return new Response("Error fetching transcription stream", { status: 500 });
+    console.error("Error in stream route:", error);
+    console.error("URL attempted:", params.url);
+    console.error("Partition:", params.partition);
+    return new Response(JSON.stringify({
+      error: "Error fetching stream",
+      message: error instanceof Error ? error.message : "Unknown error"
+    }), {
+      status: 500,
+      headers: {
+        'Content-Type': 'application/json',
+        ...corsHeaders,
+      }
+    });
   }
 }
