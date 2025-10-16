@@ -73,7 +73,23 @@ export default function CitationDialog({
                 <video
                   src={getProxyPath(partition, chunk.links.self_video_stream.href)}
                   controls
-                />
+                  playsInline
+                  preload="metadata"
+                  className="max-w-full"
+                  style={{ maxHeight: '60vh' }}
+                >
+                  Tu navegador no soporta la reproducción de video.
+                </video>
+              </div>
+              <div className="text-xs text-gray-500 mt-2">
+                <a
+                  href={chunk.links.self_video_download?.href || chunk.links.self_video_stream.href}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-blue-500 hover:underline"
+                >
+                  Abrir video en nueva pestaña
+                </a>
               </div>
             </div>
           )}
