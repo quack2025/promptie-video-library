@@ -1,4 +1,4 @@
-import { RAGIE_API_BASE_URL } from "@/lib/server/settings";
+import { RAGIE_API_BASE_URL, ALLOWED_ORIGINS } from "@/lib/server/settings";
 import { NextRequest } from "next/server";
 import { z } from "zod";
 
@@ -9,7 +9,7 @@ const paramsSchema = z.object({
 
 // CORS headers
 const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Origin': ALLOWED_ORIGINS,
   'Access-Control-Allow-Methods': 'GET, OPTIONS',
   'Access-Control-Allow-Headers': 'Content-Type, Range, Authorization',
 };
@@ -23,16 +23,21 @@ export async function OPTIONS() {
 }
 
 export async function GET(request: NextRequest) {
-  const params = paramsSchema.parse({
-    partition: request.nextUrl.searchParams.get("partition"),
-    url: request.nextUrl.searchParams.get("url"),
-  });
-
-  if (!params.url.startsWith(RAGIE_API_BASE_URL)) {
-    return new Response("Invalid URL", { status: 400 });
-  }
-
   try {
+    const params = paramsSchema.parse({
+      partition: request.nextUrl.searchParams.get("partition"),
+      url: request.nextUrl.searchParams.get("url"),
+    });
+
+    if (!params.url.startsWith(RAGIE_API_BASE_URL)) {
+      return new Response(JSON.stringify({ error: "Invalid URL" }), {
+        status: 400,
+        headers: {
+          'Content-Type': 'application/json',
+          ...corsHeaders,
+        }
+      });
+    }
     // Forward Range header if present (critical for video seeking on mobile)
     const requestHeaders: Record<string, string> = {
       authorization: `Bearer ${process.env.RAGIE_API_KEY}`,
@@ -58,7 +63,7 @@ export async function GET(request: NextRequest) {
     const headers = new Headers();
     headers.set("Content-Type", upstreamResponse.headers.get("Content-Type") ?? "application/octet-stream");
     headers.set("Accept-Ranges", "bytes");
-    headers.set("Access-Control-Allow-Origin", "*");
+    headers.set("Access-Control-Allow-Origin", ALLOWED_ORIGINS);
     headers.set("Access-Control-Allow-Methods", "GET, OPTIONS");
     headers.set("Access-Control-Allow-Headers", "Content-Type, Range");
 
@@ -79,8 +84,21 @@ export async function GET(request: NextRequest) {
     });
   } catch (error) {
     console.error("Error in stream route:", error);
-    console.error("URL attempted:", params.url);
-    console.error("Partition:", params.partition);
+
+    // Handle Zod validation errors
+    if (error instanceof z.ZodError) {
+      return new Response(JSON.stringify({
+        error: "Invalid parameters",
+        details: error.errors
+      }), {
+        status: 400,
+        headers: {
+          'Content-Type': 'application/json',
+          ...corsHeaders,
+        }
+      });
+    }
+
     return new Response(JSON.stringify({
       error: "Error fetching stream",
       message: error instanceof Error ? error.message : "Unknown error"

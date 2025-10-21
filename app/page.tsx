@@ -38,17 +38,26 @@ export default function Home() {
 
     setIsLoading(true);
 
-    const response = await fetch("/api/completions", {
-      method: "POST",
-      body: JSON.stringify({ systemPrompt, message, partition, topK, rerank, provider, openrouterModel }),
-    });
-
     try {
+      const response = await fetch("/api/completions", {
+        method: "POST",
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ systemPrompt, message, partition, topK, rerank, provider, openrouterModel }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || `API error: ${response.status}`);
+      }
+
       const json = await response.json();
       const completion = completionSchema.parse(json);
       setCompletion(completion);
     } catch (error) {
-      console.error(error);
+      console.error("Error fetching completion:", error);
+      alert(error instanceof Error ? error.message : "Failed to fetch completion");
     } finally {
       setIsLoading(false);
     }
@@ -85,8 +94,11 @@ export default function Home() {
   };
 
   const handleTopKChange = (value: string) => {
-    setTopK(parseInt(value));
-    localStorage.setItem("topK", value);
+    const parsed = parseInt(value);
+    if (!isNaN(parsed) && parsed > 0 && parsed <= 100) {
+      setTopK(parsed);
+      localStorage.setItem("topK", value);
+    }
   };
 
   const handleRerankChange = (value: boolean) => {
@@ -121,7 +133,10 @@ export default function Home() {
     }
     const savedTopK = localStorage.getItem("topK");
     if (savedTopK) {
-      setTopK(parseInt(savedTopK));
+      const parsed = parseInt(savedTopK);
+      if (!isNaN(parsed) && parsed > 0) {
+        setTopK(parsed);
+      }
     }
     const savedRerank = localStorage.getItem("rerank");
     if (savedRerank) {

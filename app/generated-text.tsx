@@ -28,8 +28,17 @@ export default function GeneratedText({completion, partition}: GeneratedTextProp
 
     e.preventDefault();
 
-    const index = url.hash.split("-").pop();
-    if (!index) { throw new Error("No index found"); }
+    const indexStr = url.hash.split("-").pop();
+    if (!indexStr) {
+      console.error("No index found in citation link");
+      return;
+    }
+
+    const index = parseInt(indexStr);
+    if (isNaN(index) || index < 0 || index >= citations.length) {
+      console.error("Invalid citation index:", indexStr);
+      return;
+    }
 
     setSelectedCitation(citations[index]);
   }
@@ -71,7 +80,7 @@ export default function GeneratedText({completion, partition}: GeneratedTextProp
           return <div key={i}>[{i}] {citation.document_title}: {citation.cited_text}</div>
         })}
       </div>
-      {selectedCitation && (
+      {selectedCitation && selectedCitation.document_index >= 0 && selectedCitation.document_index < chunks.length && (
         <CitationDialog
           partition={partition}
           chunk={chunks[selectedCitation.document_index]}

@@ -33,16 +33,20 @@ export default function CitationDialog({
   };
 
   const loadSummary = useCallback(async () => {
-      const summary = await fetch(`/api/documents/${chunk.documentId}`);
+      try {
+        const summary = await fetch(`/api/documents/${chunk.documentId}`);
 
-      if (!summary.ok) {
-        console.warn("Failed to fetch summary", summary);
-        return;
+        if (!summary.ok) {
+          console.warn("Failed to fetch summary", summary);
+          return;
+        }
+
+        const json = await summary.json();
+        const parsed = summarySchema.parse(json);
+        setSummary(parsed.summary);
+      } catch (error) {
+        console.error("Error loading summary:", error);
       }
-
-      const json = await summary.json();
-      const parsed = summarySchema.parse(json);
-      setSummary(parsed.summary);
     },
     [chunk]
   );
@@ -60,13 +64,13 @@ export default function CitationDialog({
             {citation.cited_text}
           </blockquote>
 
-          {streamType === "video" && (
+          {streamType === "video" && chunk?.links?.self_video_stream?.href && (
             <div className="flex flex-col gap-2">
               <div className="flex justify-between items-center">
                 <h2 className="font-bold">Video</h2>
                 <div className="text-sm text-gray-500">
-                  ({formatSeconds(chunk.metadata.start_time)} -{" "}
-                  {formatSeconds(chunk.metadata.end_time)})
+                  ({formatSeconds(chunk?.metadata?.start_time || 0)} -{" "}
+                  {formatSeconds(chunk?.metadata?.end_time || 0)})
                 </div>
               </div>
               <div className="flex justify-center">
@@ -94,13 +98,13 @@ export default function CitationDialog({
             </div>
           )}
 
-          {streamType === "audio" && (
+          {streamType === "audio" && chunk?.links?.self_audio_stream?.href && (
             <div className="flex flex-col gap-2">
               <div className="flex justify-between items-center">
                 <h2 className="font-bold">Audio</h2>
                 <div className="text-sm text-gray-500">
-                  ({formatSeconds(chunk.metadata.start_time)} -{" "}
-                  {formatSeconds(chunk.metadata.end_time)})
+                  ({formatSeconds(chunk?.metadata?.start_time || 0)} -{" "}
+                  {formatSeconds(chunk?.metadata?.end_time || 0)})
                 </div>
               </div>
               <div className="flex justify-center">

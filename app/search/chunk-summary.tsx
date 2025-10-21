@@ -7,24 +7,32 @@ export default function ChunkSummary({ chunk }: { chunk: any }) {
 
   useEffect(() => {
     (async function () {
-      setIsLoading(true);
-      const summary = await fetch(`/api/chunk-summary`, {
-        method: "POST",
-        body: JSON.stringify({
-          text: chunk.text,
-        }),
-      });
+      try {
+        setIsLoading(true);
+        const summary = await fetch(`/api/chunk-summary`, {
+          method: "POST",
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            text: chunk.text,
+          }),
+        });
 
-      if (!summary.ok) {
-        console.warn("Failed to fetch summary", summary);
-        setSummary("Failed to fetch chunk summary");
+        if (!summary.ok) {
+          console.warn("Failed to fetch summary", summary);
+          setSummary("Failed to fetch chunk summary");
+          return;
+        }
+
+        const json = await summary.json();
+        setSummary(json?.summary || "No summary available");
+      } catch (error) {
+        console.error("Error fetching chunk summary:", error);
+        setSummary("Error loading summary");
+      } finally {
         setIsLoading(false);
-        return;
       }
-
-      const json = await summary.json();
-      setSummary(json.summary);
-      setIsLoading(false);
     })();
   }, [chunk]);
 

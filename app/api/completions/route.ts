@@ -1,6 +1,7 @@
 import { getRagieClient } from "@/lib/server/utils";
 import {
   OPENROUTER_API_KEY,
+  ALLOWED_ORIGINS,
 } from "@/lib/server/settings";
 import Anthropic from "@anthropic-ai/sdk";
 import Handlebars from "handlebars";
@@ -13,9 +14,9 @@ const ragie = getRagieClient();
 const anthropic = new Anthropic();
 
 const payloadSchema = z.object({
-  message: z.string(),
-  partition: z.string(),
-  topK: z.number(),
+  message: z.string().min(1).max(10000),
+  partition: z.string().min(1),
+  topK: z.number().int().min(1).max(100),
   rerank: z.boolean(),
   systemPrompt: z.string(),
   provider: z.enum(["anthropic", "openrouter"]),
@@ -24,7 +25,7 @@ const payloadSchema = z.object({
 
 // CORS headers
 const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Origin': ALLOWED_ORIGINS,
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
   'Access-Control-Allow-Headers': 'Content-Type, Authorization',
 };
@@ -38,15 +39,16 @@ export async function OPTIONS() {
 }
 
 export async function POST(request: NextRequest) {
-  const json = await request.json();
-  const payload = payloadSchema.parse(json);
+  try {
+    const json = await request.json();
+    const payload = payloadSchema.parse(json);
 
-  const ragieResponse = await ragie.retrievals.retrieve({
-    query: payload.message,
-    partition: payload.partition,
-    topK: payload.topK,
-    rerank: payload.rerank,
-  });
+    const ragieResponse = await ragie.retrievals.retrieve({
+      query: payload.message,
+      partition: payload.partition,
+      topK: payload.topK,
+      rerank: payload.rerank,
+    });
 
   const compiled = Handlebars.compile(payload.systemPrompt);
 
@@ -100,41 +102,61 @@ export async function POST(request: NextRequest) {
       );
     }
   } else {
-    // Default to Anthropic
-    const anthropicResponse = await anthropic.messages.create({
-      model: "claude-3-7-sonnet-latest",
-      max_tokens: 1000,
-      messages: [
-        {
-          role: "user", // Anthropic typically starts with a user role for system-like prompts
-          content: systemPromptContent,
-        },
-        {
-          role: "user", // Or assistant, depending on how you structure conversation for Anthropic
-          content: ragieResponse.scoredChunks.map((chunk) => ({
-            type: "document" as const,
-            source: {
-              type: "text" as const,
-              media_type: "text/plain",
-              data: chunk.text,
-            },
-            title: chunk.documentName,
-            citations: { enabled: true },
-          })),
-        },
-        {
-          role: "user",
-          content: payload.message,
-        },
-      ],
-    });
-    modelResponse = anthropicResponse;
-  }
+      // Default to Anthropic
+      const anthropicResponse = await anthropic.messages.create({
+        model: "claude-3-7-sonnet-latest",
+        max_tokens: 1000,
+        messages: [
+          {
+            role: "user", // Anthropic typically starts with a user role for system-like prompts
+            content: systemPromptContent,
+          },
+          {
+            role: "user", // Or assistant, depending on how you structure conversation for Anthropic
+            content: ragieResponse.scoredChunks.map((chunk) => ({
+              type: "document" as const,
+              source: {
+                type: "text" as const,
+                media_type: "text/plain",
+                data: chunk.text,
+              },
+              title: chunk.documentName,
+              citations: { enabled: true },
+            })),
+          },
+          {
+            role: "user",
+            content: payload.message,
+          },
+        ],
+      });
+      modelResponse = anthropicResponse;
+    }
 
-  return NextResponse.json({
-    modelResponse: modelResponse,
-    retrievalResponse: ragieResponse,
-  }, {
-    headers: corsHeaders,
-  });
+    return NextResponse.json({
+      modelResponse: modelResponse,
+      retrievalResponse: ragieResponse,
+    }, {
+      headers: corsHeaders,
+    });
+  } catch (error) {
+    console.error("Error in completions route:", error);
+
+    // Handle Zod validation errors
+    if (error instanceof z.ZodError) {
+      return NextResponse.json(
+        { error: "Invalid input", details: error.errors },
+        { status: 400, headers: corsHeaders }
+      );
+    }
+
+    // Handle other errors
+    return NextResponse.json(
+      {
+        error: "Failed to generate completion",
+        message: error instanceof Error ? error.message : "Unknown error"
+      },
+      { status: 500, headers: corsHeaders }
+    );
+  }
 }

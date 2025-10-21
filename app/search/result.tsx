@@ -14,16 +14,16 @@ export default function Result({ chunk, partition }: ResultProps) {
       <div className="flex gap-2 justify-between">
         <p className="font-bold">{chunk.documentName}</p>
         <p className="text-sm text-gray-500">
-          ({formatSeconds(chunk.metadata.start_time)} -{" "}
-          {formatSeconds(chunk.metadata.end_time)})
+          ({formatSeconds(chunk?.metadata?.start_time || 0)} -{" "}
+          {formatSeconds(chunk?.metadata?.end_time || 0)})
         </p>
       </div>
       <ChunkSummary chunk={chunk} />
-      {streamType === "video" && (
-        <video src={getProxyPath(partition, chunk.links?.self_video_stream.href)} controls />
+      {streamType === "video" && chunk?.links?.self_video_stream?.href && (
+        <video src={getProxyPath(partition, chunk.links.self_video_stream.href)} controls />
       )}
-      {streamType === "audio" && (
-        <audio src={getProxyPath(partition, chunk.links?.self_audio_stream.href)} controls />
+      {streamType === "audio" && chunk?.links?.self_audio_stream?.href && (
+        <audio src={getProxyPath(partition, chunk.links.self_audio_stream.href)} controls />
       )}
     </div>
   )
