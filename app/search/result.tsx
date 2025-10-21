@@ -20,10 +20,21 @@ export default function Result({ chunk, partition }: ResultProps) {
       </div>
       <ChunkSummary chunk={chunk} />
       {streamType === "video" && chunk?.links?.self_video_stream?.href && (
-        <video src={getProxyPath(partition, chunk.links.self_video_stream.href)} controls />
+        <video
+          src={getProxyPath(partition, chunk.links.self_video_stream.href)}
+          controls
+          playsInline
+          preload="metadata"
+          className="max-w-full"
+        >
+          Tu navegador no soporta la reproducción de video.
+        </video>
       )}
       {streamType === "audio" && chunk?.links?.self_audio_stream?.href && (
-        <audio src={getProxyPath(partition, chunk.links.self_audio_stream.href)} controls />
+        <audio
+          src={getProxyPath(partition, chunk.links.self_audio_stream.href)}
+          controls
+        />
       )}
     </div>
   )
