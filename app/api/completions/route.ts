@@ -2,6 +2,7 @@ import { getRagieClient } from "@/lib/server/utils";
 import {
   OPENROUTER_API_KEY,
 } from "@/lib/server/settings";
+import { DEFAULT_SYSTEM_PROMPT } from "@/lib/prompts";
 import Anthropic from "@anthropic-ai/sdk";
 import Handlebars from "handlebars";
 import { NextRequest, NextResponse } from "next/server";
@@ -17,7 +18,7 @@ const payloadSchema = z.object({
   partition: z.string(),
   topK: z.number(),
   rerank: z.boolean(),
-  systemPrompt: z.string(),
+  systemPrompt: z.string().optional(), // Optional, will be ignored - server always uses DEFAULT_SYSTEM_PROMPT
   provider: z.enum(["anthropic", "openrouter"]),
   openrouterModel: z.string(),
 });
@@ -48,7 +49,9 @@ export async function POST(request: NextRequest) {
     rerank: payload.rerank,
   });
 
-  const compiled = Handlebars.compile(payload.systemPrompt);
+  // ALWAYS use the server's DEFAULT_SYSTEM_PROMPT, ignore client's systemPrompt
+  // This ensures consistent behavior regardless of what the client sends
+  const compiled = Handlebars.compile(DEFAULT_SYSTEM_PROMPT);
 
   const systemPromptContent = compiled({
     now: new Date().toISOString(),
