@@ -17,7 +17,7 @@ const payloadSchema = z.object({
   message: z.string(),
   partition: z.string(),
   topK: z.number(),
-  rerank: z.boolean(),
+  rerank: z.boolean().optional(), // Optional, will be ignored - server always uses false
   systemPrompt: z.string().optional(), // Optional, will be ignored - server always uses DEFAULT_SYSTEM_PROMPT
   provider: z.enum(["anthropic", "openrouter"]),
   openrouterModel: z.string(),
@@ -42,11 +42,12 @@ export async function POST(request: NextRequest) {
   const json = await request.json();
   const payload = payloadSchema.parse(json);
 
+  // ALWAYS use rerank: false because Ragie has issues with reranking for this content
   const ragieResponse = await ragie.retrievals.retrieve({
     query: payload.message,
     partition: payload.partition,
     topK: payload.topK,
-    rerank: payload.rerank,
+    rerank: false, // Force false, ignore client's rerank parameter
   });
 
   // ALWAYS use the server's DEFAULT_SYSTEM_PROMPT, ignore client's systemPrompt
