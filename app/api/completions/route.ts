@@ -106,7 +106,7 @@ export async function POST(request: NextRequest) {
   } else {
     // Default to Anthropic
     const anthropicResponse = await anthropic.messages.create({
-      model: "claude-3-7-sonnet-latest",
+      model: "claude-3-haiku-20240307",
       max_tokens: 1000,
       messages: [
         {
