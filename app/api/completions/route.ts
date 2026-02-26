@@ -105,30 +105,20 @@ export async function POST(request: NextRequest) {
     }
   } else {
     // Default to Anthropic
+    // claude-3-haiku does not support document/citations content type,
+    // so pass chunks as plain text context
+    const documentContext = ragieResponse.scoredChunks
+      .map((chunk) => `Document: ${chunk.documentName}\n${chunk.text}`)
+      .join("\n\n");
+
     const anthropicResponse = await anthropic.messages.create({
       model: "claude-3-haiku-20240307",
       max_tokens: 1000,
+      system: systemPromptContent,
       messages: [
         {
-          role: "user", // Anthropic typically starts with a user role for system-like prompts
-          content: systemPromptContent,
-        },
-        {
-          role: "user", // Or assistant, depending on how you structure conversation for Anthropic
-          content: ragieResponse.scoredChunks.map((chunk) => ({
-            type: "document" as const,
-            source: {
-              type: "text" as const,
-              media_type: "text/plain",
-              data: chunk.text,
-            },
-            title: chunk.documentName,
-            citations: { enabled: true },
-          })),
-        },
-        {
           role: "user",
-          content: payload.message,
+          content: `${documentContext}\n\nUser Query: ${payload.message}`,
         },
       ],
     });
