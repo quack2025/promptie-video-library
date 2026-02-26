@@ -1,6 +1,6 @@
 # Promptie
 
-A tool for testing prompts and generations with Ragie. This is a Next.js application that allows you to experiment with AI text generation using the Ragie knowledge retrieval system and Anthropic's Claude AI.
+A video library RAG tool built on Ragie and Anthropic Claude. Upload videos to Ragie, then query them via natural language. The system retrieves relevant video chunks and generates AI responses with citations that link back to the source video segments with embedded playback.
 
 <img width="302" alt="image" src="https://github.com/user-attachments/assets/920b33fb-4f07-44bb-b6bb-d266c0857d60" />
 <img width="302" alt="image" src="https://github.com/user-attachments/assets/29e99518-45be-4214-a48a-4d06440d00b7" />
@@ -105,7 +105,7 @@ yarn start
 
 - [Next.js](https://nextjs.org/) - React framework
 - LLM Providers:
-  - [Anthropic Claude](https://www.anthropic.com/claude) - AI assistant
+  - [Anthropic Claude](https://www.anthropic.com/claude) - AI assistant (Sonnet 4.5+ with citations)
   - [OpenRouter](https://openrouter.ai/) - Access various LLMs via a single API
 - [Ragie](https://ragie.ai/) - Knowledge retrieval system
 - [Tailwind CSS](https://tailwindcss.com/) - Utility-first CSS framework
