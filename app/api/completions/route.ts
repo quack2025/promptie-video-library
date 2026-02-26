@@ -106,7 +106,7 @@ export async function POST(request: NextRequest) {
   } else {
     // Default to Anthropic with citations enabled
     const anthropicResponse = await anthropic.messages.create({
-      model: "claude-3-7-sonnet-latest",
+      model: "claude-sonnet-4-5-20250929",
       max_tokens: 1000,
       messages: [
         {
