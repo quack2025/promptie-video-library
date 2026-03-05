@@ -161,12 +161,8 @@ export default function Home() {
                 onChange={(e) => { setCiudad(e.target.value); localStorage.setItem("ciudad", e.target.value); }}
               >
                 <option value="">Todas</option>
-                <option value="Bogotá">Bogota</option>
-                <option value="Medellín">Medellin</option>
-                <option value="Cali">Cali</option>
-                <option value="Barranquilla">Barranquilla</option>
-                <option value="Cartagena">Cartagena</option>
-                <option value="Bucaramanga">Bucaramanga</option>
+                <option value="Bogotá">Bogotá</option>
+                <option value="Cali-Barranquilla">Cali-Barranquilla</option>
               </select>
             </div>
             <div className="text-sm flex items-center gap-2">
@@ -179,7 +175,7 @@ export default function Home() {
               >
                 <option value="">Todos</option>
                 <option value="comprador">Comprador</option>
-                <option value="no comprador">No comprador</option>
+                <option value="rechazador">Rechazador</option>
               </select>
             </div>
             <div className="text-sm text-gray-500 flex items-center gap-2">
