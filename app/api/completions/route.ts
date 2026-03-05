@@ -17,10 +17,12 @@ const payloadSchema = z.object({
   message: z.string(),
   partition: z.string(),
   topK: z.number(),
-  rerank: z.boolean().optional(), // Optional, will be ignored - server always uses false
-  systemPrompt: z.string().optional(), // Optional, will be ignored - server always uses DEFAULT_SYSTEM_PROMPT
+  rerank: z.boolean().optional(),
+  systemPrompt: z.string().optional(),
   provider: z.enum(["anthropic", "openrouter"]),
   openrouterModel: z.string(),
+  ciudad: z.string().optional(),
+  tipoConsumidor: z.string().optional(),
 });
 
 // CORS headers
@@ -42,12 +44,26 @@ export async function POST(request: NextRequest) {
   const json = await request.json();
   const payload = payloadSchema.parse(json);
 
-  // ALWAYS use rerank: false because Ragie has issues with reranking for this content
+  // Build metadata filter from ciudad/tipoConsumidor
+  const conditions: Record<string, any>[] = [];
+  if (payload.ciudad) {
+    conditions.push({ field: "metadata.ciudad", operator: "eq", value: payload.ciudad });
+  }
+  if (payload.tipoConsumidor) {
+    conditions.push({ field: "metadata.tipo_consumidor", operator: "eq", value: payload.tipoConsumidor });
+  }
+  const filter = conditions.length > 0
+    ? conditions.length === 1
+      ? conditions[0]
+      : { operator: "and", conditions }
+    : undefined;
+
   const ragieResponse = await ragie.retrievals.retrieve({
     query: payload.message,
     partition: payload.partition,
     topK: payload.topK,
-    rerank: false, // Force false, ignore client's rerank parameter
+    rerank: false,
+    filter,
   });
 
   // ALWAYS use the server's DEFAULT_SYSTEM_PROMPT, ignore client's systemPrompt
