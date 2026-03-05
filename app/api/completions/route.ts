@@ -13,6 +13,8 @@ import { createOpenRouter } from "@openrouter/ai-sdk-provider";
 const ragie = getRagieClient();
 const anthropic = new Anthropic();
 
+const ANTHROPIC_MODEL = "claude-sonnet-4-6-20250514";
+
 const payloadSchema = z.object({
   message: z.string(),
   partition: z.string(),
@@ -35,10 +37,7 @@ const corsHeaders = {
 
 // Handle OPTIONS request for CORS preflight
 export async function OPTIONS() {
-  return new NextResponse(null, {
-    status: 200,
-    headers: corsHeaders,
-  });
+  return new NextResponse(null, { status: 200, headers: corsHeaders });
 }
 
 export async function POST(request: NextRequest) {
@@ -84,17 +83,18 @@ export async function POST(request: NextRequest) {
   // ALWAYS use the server's DEFAULT_SYSTEM_PROMPT, ignore client's systemPrompt
   // This ensures consistent behavior regardless of what the client sends
   const compiled = Handlebars.compile(DEFAULT_SYSTEM_PROMPT);
-
   const systemPromptContent = compiled({
     now: new Date().toISOString(),
   });
 
   let modelResponse;
 
+  // Always use Anthropic unless explicitly set to openrouter AND key is available
   if (payload.provider === "openrouter" && OPENROUTER_API_KEY) {
     const openrouter = createOpenRouter({
       apiKey: OPENROUTER_API_KEY,
     });
+
     const documentContext = ragieResponse.scoredChunks
       .map((chunk) => `Document: ${chunk.documentName}\n${chunk.text}`)
       .join("\n\n");
@@ -113,11 +113,9 @@ export async function POST(request: NextRequest) {
         messages: messages,
         maxTokens: 4000,
       });
-      /** Don't directly set `modelResponse` to the OpenRouter response, as the
-       * frontend expect a structure like that returned from an Anthropic call.
-       * */
+
       modelResponse = {
-        id: `openrouter-${Date.now()}`, // Placeholder ID
+        id: `openrouter-${Date.now()}`,
         type: "message",
         role: "assistant",
         model: payload.openrouterModel,
@@ -125,7 +123,7 @@ export async function POST(request: NextRequest) {
         usage: {
           input_tokens: usage.promptTokens,
           output_tokens: usage.completionTokens,
-        }, // Placeholder usage
+        },
       };
     } catch (error) {
       console.error("OpenRouter API error:", error);
@@ -138,7 +136,7 @@ export async function POST(request: NextRequest) {
     // Default to Anthropic with citations enabled
     try {
       const anthropicResponse = await anthropic.messages.create({
-        model: "claude-sonnet-4-6",
+        model: ANTHROPIC_MODEL,
         max_tokens: 4000,
         messages: [
           {
@@ -175,10 +173,11 @@ export async function POST(request: NextRequest) {
     }
   }
 
-  return NextResponse.json({
-    modelResponse: modelResponse,
-    retrievalResponse: ragieResponse,
-  }, {
-    headers: corsHeaders,
-  });
+  return NextResponse.json(
+    {
+      modelResponse: modelResponse,
+      retrievalResponse: ragieResponse,
+    },
+    { headers: corsHeaders }
+  );
 }
