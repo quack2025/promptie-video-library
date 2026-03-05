@@ -25,6 +25,7 @@ const payloadSchema = z.object({
   openrouterModel: z.string(),
   ciudad: z.string().optional(),
   tipoConsumidor: z.string().optional(),
+  maxChunksPerDocument: z.number().optional(),
 });
 
 // CORS headers
@@ -43,28 +44,41 @@ export async function POST(request: NextRequest) {
   const json = await request.json();
   const payload = payloadSchema.parse(json);
 
-  // Build metadata filter from ciudad/tipoConsumidor
+  // Build metadata filter from ciudad/tipoConsumidor (Ragie uses MongoDB-style filters)
   const conditions: Record<string, any>[] = [];
   if (payload.ciudad) {
-    conditions.push({ field: "metadata.ciudad", operator: "eq", value: payload.ciudad });
+    conditions.push({ ciudad: payload.ciudad });
   }
   if (payload.tipoConsumidor) {
-    conditions.push({ field: "metadata.tipo_consumidor", operator: "eq", value: payload.tipoConsumidor });
+    conditions.push({ tipo_consumidor: payload.tipoConsumidor });
   }
-  const filter =
-    conditions.length > 0
-      ? conditions.length === 1
-        ? conditions[0]
-        : { operator: "and", conditions }
-      : undefined;
+  const filter = conditions.length > 0
+    ? conditions.length === 1
+      ? conditions[0]
+      : { $and: conditions }
+    : undefined;
+
+  // Fetch more chunks than requested so we can diversify across documents
+  const maxChunksPerDocument = payload.maxChunksPerDocument ?? 0;
+  const fetchTopK = maxChunksPerDocument > 0 ? Math.min(payload.topK * 3, 100) : payload.topK;
 
   const ragieResponse = await ragie.retrievals.retrieve({
     query: payload.message,
     partition: payload.partition,
-    topK: payload.topK,
+    topK: fetchTopK,
     rerank: false,
     filter,
   });
+
+  // Diversify: limit chunks per document to spread across more videos
+  if (maxChunksPerDocument > 0) {
+    const countByDoc: Record<string, number> = {};
+    ragieResponse.scoredChunks = ragieResponse.scoredChunks.filter((chunk) => {
+      const docId = chunk.documentId;
+      countByDoc[docId] = (countByDoc[docId] || 0) + 1;
+      return countByDoc[docId] <= maxChunksPerDocument;
+    }).slice(0, payload.topK);
+  }
 
   // ALWAYS use the server's DEFAULT_SYSTEM_PROMPT, ignore client's systemPrompt
   // This ensures consistent behavior regardless of what the client sends
@@ -97,7 +111,7 @@ export async function POST(request: NextRequest) {
       const { text, usage } = await generateText({
         model: openrouter(payload.openrouterModel!),
         messages: messages,
-        maxTokens: 1000,
+        maxTokens: 4000,
       });
 
       modelResponse = {
@@ -119,35 +133,44 @@ export async function POST(request: NextRequest) {
       );
     }
   } else {
-    // Default: Anthropic claude-sonnet-4-6 with citations enabled
-    const anthropicResponse = await anthropic.messages.create({
-      model: ANTHROPIC_MODEL,
-      max_tokens: 1000,
-      messages: [
-        {
-          role: "user",
-          content: systemPromptContent,
-        },
-        {
-          role: "user",
-          content: ragieResponse.scoredChunks.map((chunk) => ({
-            type: "document" as const,
-            source: {
-              type: "text" as const,
-              media_type: "text/plain",
-              data: chunk.text,
-            },
-            title: chunk.documentName,
-            citations: { enabled: true },
-          })),
-        },
-        {
-          role: "user",
-          content: payload.message,
-        },
-      ],
-    });
-    modelResponse = anthropicResponse;
+    // Default to Anthropic with citations enabled
+    try {
+      const anthropicResponse = await anthropic.messages.create({
+        model: ANTHROPIC_MODEL,
+        max_tokens: 4000,
+        messages: [
+          {
+            role: "user",
+            content: systemPromptContent,
+          },
+          {
+            role: "user",
+            content: ragieResponse.scoredChunks.map((chunk) => ({
+              type: "document" as const,
+              source: {
+                type: "text" as const,
+                media_type: "text/plain",
+                data: chunk.text,
+              },
+              title: chunk.documentName,
+              citations: { enabled: true },
+            })),
+          },
+          {
+            role: "user",
+            content: payload.message,
+          },
+        ],
+      });
+      modelResponse = anthropicResponse;
+    } catch (error) {
+      console.error("Anthropic API error:", error);
+      const message = error instanceof Error ? error.message : "Unknown Anthropic error";
+      return NextResponse.json(
+        { error: `Anthropic API failed: ${message}` },
+        { status: 500, headers: corsHeaders }
+      );
+    }
   }
 
   return NextResponse.json(
@@ -157,4 +180,4 @@ export async function POST(request: NextRequest) {
     },
     { headers: corsHeaders }
   );
-    }
+}

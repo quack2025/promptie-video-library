@@ -50,10 +50,10 @@ Users upload video content to Ragie, then query it via natural language. The sys
 The `.env` file is NOT committed to git. All env vars must be configured in Vercel dashboard and redeployed.
 
 ## Important: Anthropic Model Names
-Anthropic deprecates model aliases without notice. As of Feb 2026:
+Anthropic deprecates model aliases without notice. As of Mar 2026:
 - `claude-3-7-sonnet-latest` — **REMOVED** (was the original model used)
-- `claude-sonnet-4-5-20250929` — Current working model with citations support
-- `claude-sonnet-4-6` — Latest Sonnet (also supports citations)
+- `claude-sonnet-4-5-20250929` — **REMOVED** (was the previous working model)
+- `claude-sonnet-4-6` — Current working model with citations support
 - `claude-3-haiku-20240307` — Does NOT support `document` content type or citations
 
 Use the `/v1/models` API endpoint to list available models for your key:

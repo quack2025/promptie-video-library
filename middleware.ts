@@ -36,6 +36,7 @@ async function isAuthenticated(request: NextRequest): Promise<boolean> {
 }
 
 export async function middleware(request: NextRequest) {
+  // Skip auth if AUTH_USERS is not configured
   if (!process.env.AUTH_USERS) {
     return NextResponse.next();
   }
