@@ -162,6 +162,7 @@ export default function Home() {
               >
                 <option value="">Todas</option>
                 <option value="Bogotá">Bogotá</option>
+                <option value="Medellín">Medellín</option>
                 <option value="Cali-Barranquilla">Cali-Barranquilla</option>
               </select>
             </div>
