@@ -185,8 +185,8 @@ export default function Home() {
                 onChange={(e) => { setTipoConsumidor(e.target.value); localStorage.setItem("tipoConsumidor", e.target.value); }}
               >
                 <option value="">Todos</option>
-                <option value="comprador">Comprador</option>
-                <option value="rechazador">Rechazador</option>
+                <option value="usuario">Usuario</option>
+                <option value="no usuario">No usuario</option>
               </select>
             </div>
             <div className="text-sm flex items-center gap-2">
