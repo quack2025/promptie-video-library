@@ -29,7 +29,7 @@ export default function Home() {
   const [partition, setPartition] = useState<string>("inspira");
   const [ciudad, setCiudad] = useState<string>("");
   const [tipoConsumidor, setTipoConsumidor] = useState<string>("");
-  const [topK, setTopK] = useState<number>(6);
+  const [topK, setTopK] = useState<number>(20);
   const [rerank, setRerank] = useState<boolean>(false);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [open, setOpen] = useState<boolean>(false);
