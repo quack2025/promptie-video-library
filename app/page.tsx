@@ -26,7 +26,7 @@ export default function Home() {
     useState<string>(openrouterModel);
   const [provider, setProvider] = useState<string>("anthropic");
   const [pendingProvider, setPendingProvider] = useState<string>(provider);
-  const [partition, setPartition] = useState<string>("default");
+  const [partition, setPartition] = useState<string>("inspira");
   const [topK, setTopK] = useState<number>(6);
   const [rerank, setRerank] = useState<boolean>(false);
   const [isLoading, setIsLoading] = useState<boolean>(false);
