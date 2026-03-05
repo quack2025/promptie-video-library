@@ -13,7 +13,7 @@ export default function SearchPage() {
   const [completion, setCompletion] = useState<null | z.infer<typeof completionSchema>>(null);
   const [systemPrompt, setSystemPrompt] = useState<string>(DEFAULT_SYSTEM_PROMPT);
   const [pendingSystemPrompt, setPendingSystemPrompt] = useState<string>(systemPrompt);
-  const [partition, setPartition] = useState<string>("default");
+  const [partition, setPartition] = useState<string>("inspira");
   const [topK, setTopK] = useState<number>(6);
   const [rerank, setRerank] = useState<boolean>(false);
   const [isLoading, setIsLoading] = useState<boolean>(false);

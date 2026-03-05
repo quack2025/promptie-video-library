@@ -26,7 +26,9 @@ export default function Home() {
     useState<string>(openrouterModel);
   const [provider, setProvider] = useState<string>("anthropic");
   const [pendingProvider, setPendingProvider] = useState<string>(provider);
-  const [partition, setPartition] = useState<string>("default");
+  const [partition, setPartition] = useState<string>("inspira");
+  const [ciudad, setCiudad] = useState<string>("");
+  const [tipoConsumidor, setTipoConsumidor] = useState<string>("");
   const [topK, setTopK] = useState<number>(6);
   const [rerank, setRerank] = useState<boolean>(false);
   const [isLoading, setIsLoading] = useState<boolean>(false);
@@ -40,7 +42,7 @@ export default function Home() {
 
     const response = await fetch("/api/completions", {
       method: "POST",
-      body: JSON.stringify({ systemPrompt, message, partition, topK, rerank, provider, openrouterModel }),
+      body: JSON.stringify({ systemPrompt, message, partition, topK, rerank, provider, openrouterModel, ciudad, tipoConsumidor }),
     });
 
     try {
@@ -119,6 +121,14 @@ export default function Home() {
     if (savedPartition) {
       setPartition(savedPartition);
     }
+    const savedCiudad = localStorage.getItem("ciudad");
+    if (savedCiudad) {
+      setCiudad(savedCiudad);
+    }
+    const savedTipoConsumidor = localStorage.getItem("tipoConsumidor");
+    if (savedTipoConsumidor) {
+      setTipoConsumidor(savedTipoConsumidor);
+    }
     const savedTopK = localStorage.getItem("topK");
     if (savedTopK) {
       setTopK(parseInt(savedTopK));
@@ -141,36 +151,36 @@ export default function Home() {
             value={message}
             onChange={(e) => handleMessageChange(e.target.value)}
           />
-          <div className="flex gap-10 pt-2 justify-between">
+          <div className="flex gap-4 pt-2 flex-wrap items-center">
             <div className="text-sm flex items-center gap-2">
-              <label htmlFor="partition">Partition:</label>
-              <input
-                type="text"
-                name="partition"
+              <label htmlFor="ciudad">Ciudad:</label>
+              <select
+                name="ciudad"
                 className="border-1 border-gray-300 rounded-md p-2"
-                value={partition}
-                onChange={(e) => handlePartitionChange(e.target.value)}
-              />
+                value={ciudad}
+                onChange={(e) => { setCiudad(e.target.value); localStorage.setItem("ciudad", e.target.value); }}
+              >
+                <option value="">Todas</option>
+                <option value="Bogotá">Bogota</option>
+                <option value="Medellín">Medellin</option>
+                <option value="Cali">Cali</option>
+                <option value="Barranquilla">Barranquilla</option>
+                <option value="Cartagena">Cartagena</option>
+                <option value="Bucaramanga">Bucaramanga</option>
+              </select>
             </div>
             <div className="text-sm flex items-center gap-2">
-              <label htmlFor="topK">Top K:</label>
-              <input
-                type="number"
-                name="topK"
+              <label htmlFor="tipoConsumidor">Tipo:</label>
+              <select
+                name="tipoConsumidor"
                 className="border-1 border-gray-300 rounded-md p-2"
-                value={topK}
-                onChange={(e) => handleTopKChange(e.target.value)}
-              />
-            </div>
-            <div className="text-sm flex items-center gap-2">
-              <label htmlFor="rerank">Rerank:</label>
-              <input
-                type="checkbox"
-                name="rerank"
-                className="border-1 border-gray-300 rounded-md p-2"
-                checked={rerank}
-                onChange={(e) => handleRerankChange(e.target.checked)}
-              />
+                value={tipoConsumidor}
+                onChange={(e) => { setTipoConsumidor(e.target.value); localStorage.setItem("tipoConsumidor", e.target.value); }}
+              >
+                <option value="">Todos</option>
+                <option value="comprador">Comprador</option>
+                <option value="no comprador">No comprador</option>
+              </select>
             </div>
             <div className="text-sm text-gray-500 flex items-center gap-2">
               <Dialog open={open} onOpenChange={handleOpenChange}>
