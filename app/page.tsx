@@ -33,6 +33,7 @@ export default function Home() {
   const [maxChunksPerDocument, setMaxChunksPerDocument] = useState<number>(0);
   const [rerank, setRerank] = useState<boolean>(false);
   const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [error, setError] = useState<string | null>(null);
   const [open, setOpen] = useState<boolean>(false);
   const [message, setMessage] = useState<string>("");
 
@@ -40,6 +41,7 @@ export default function Home() {
     e.preventDefault();
 
     setIsLoading(true);
+    setError(null);
 
     const response = await fetch("/api/completions", {
       method: "POST",
@@ -48,10 +50,16 @@ export default function Home() {
 
     try {
       const json = await response.json();
+      if (!response.ok) {
+        setError(json.error || `Error ${response.status}`);
+        setCompletion(null);
+        return;
+      }
       const completion = completionSchema.parse(json);
       setCompletion(completion);
     } catch (error) {
       console.error(error);
+      setError("Error parsing response");
     } finally {
       setIsLoading(false);
     }
@@ -305,7 +313,12 @@ export default function Home() {
           Send
         </button>
       </form>
-      {!completion && !isLoading && (
+      {error && !isLoading && (
+        <div className="flex flex-col h-full mt-8">
+          <p className="text-red-600 font-medium">{error}</p>
+        </div>
+      )}
+      {!completion && !error && !isLoading && (
         <div className="flex flex-col h-full mt-8">
           <p>No completion yet. Send a message to get started.</p>
         </div>

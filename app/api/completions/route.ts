@@ -13,7 +13,7 @@ import { createOpenRouter } from "@openrouter/ai-sdk-provider";
 const ragie = getRagieClient();
 const anthropic = new Anthropic();
 
-const ANTHROPIC_MODEL = "claude-sonnet-4-6-20250514";
+const ANTHROPIC_MODEL = "claude-sonnet-4-6";
 
 const payloadSchema = z.object({
   message: z.string(),

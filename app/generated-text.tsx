@@ -14,6 +14,10 @@ interface GeneratedTextProps {
 export default function GeneratedText({completion, partition}: GeneratedTextProps) {
   const [selectedCitation, setSelectedCitation] = useState<Citation | null>(null);
 
+  if (!completion.modelResponse?.content) {
+    return <p className="text-red-600">No response content available.</p>;
+  }
+
   const citations = completion.modelResponse.content.flatMap((content: any) => {
     if (content.type !== "text") { return [] }
     return content.citations || [];
