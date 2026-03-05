@@ -121,34 +121,43 @@ export async function POST(request: NextRequest) {
     }
   } else {
     // Default to Anthropic with citations enabled
-    const anthropicResponse = await anthropic.messages.create({
-      model: "claude-sonnet-4-5-20250929",
-      max_tokens: 1000,
-      messages: [
-        {
-          role: "user",
-          content: systemPromptContent,
-        },
-        {
-          role: "user",
-          content: ragieResponse.scoredChunks.map((chunk) => ({
-            type: "document" as const,
-            source: {
-              type: "text" as const,
-              media_type: "text/plain",
-              data: chunk.text,
-            },
-            title: chunk.documentName,
-            citations: { enabled: true },
-          })),
-        },
-        {
-          role: "user",
-          content: payload.message,
-        },
-      ],
-    });
-    modelResponse = anthropicResponse;
+    try {
+      const anthropicResponse = await anthropic.messages.create({
+        model: "claude-sonnet-4-6",
+        max_tokens: 1000,
+        messages: [
+          {
+            role: "user",
+            content: systemPromptContent,
+          },
+          {
+            role: "user",
+            content: ragieResponse.scoredChunks.map((chunk) => ({
+              type: "document" as const,
+              source: {
+                type: "text" as const,
+                media_type: "text/plain",
+                data: chunk.text,
+              },
+              title: chunk.documentName,
+              citations: { enabled: true },
+            })),
+          },
+          {
+            role: "user",
+            content: payload.message,
+          },
+        ],
+      });
+      modelResponse = anthropicResponse;
+    } catch (error) {
+      console.error("Anthropic API error:", error);
+      const message = error instanceof Error ? error.message : "Unknown Anthropic error";
+      return NextResponse.json(
+        { error: `Anthropic API failed: ${message}` },
+        { status: 500, headers: corsHeaders }
+      );
+    }
   }
 
   return NextResponse.json({
