@@ -44,18 +44,18 @@ export async function POST(request: NextRequest) {
   const json = await request.json();
   const payload = payloadSchema.parse(json);
 
-  // Build metadata filter from ciudad/tipoConsumidor
+  // Build metadata filter from ciudad/tipoConsumidor (Ragie uses MongoDB-style filters)
   const conditions: Record<string, any>[] = [];
   if (payload.ciudad) {
-    conditions.push({ field: "metadata.ciudad", operator: "eq", value: payload.ciudad });
+    conditions.push({ ciudad: payload.ciudad });
   }
   if (payload.tipoConsumidor) {
-    conditions.push({ field: "metadata.tipo_consumidor", operator: "eq", value: payload.tipoConsumidor });
+    conditions.push({ tipo_consumidor: payload.tipoConsumidor });
   }
   const filter = conditions.length > 0
     ? conditions.length === 1
       ? conditions[0]
-      : { operator: "and", conditions }
+      : { $and: conditions }
     : undefined;
 
   const ragieResponse = await ragie.retrievals.retrieve({
