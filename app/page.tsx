@@ -179,6 +179,22 @@ export default function Home() {
                 <option value="rechazador">Rechazador</option>
               </select>
             </div>
+            <div className="text-sm flex items-center gap-2">
+              <label htmlFor="topK">Chunks:</label>
+              <select
+                name="topK"
+                className="border-1 border-gray-300 rounded-md p-2"
+                value={topK}
+                onChange={(e) => handleTopKChange(e.target.value)}
+              >
+                <option value="8">8</option>
+                <option value="20">20</option>
+                <option value="40">40</option>
+                <option value="60">60</option>
+                <option value="80">80</option>
+                <option value="100">100</option>
+              </select>
+            </div>
             <div className="text-sm text-gray-500 flex items-center gap-2">
               <Dialog open={open} onOpenChange={handleOpenChange}>
                 <DialogTrigger>Edit prompt</DialogTrigger>

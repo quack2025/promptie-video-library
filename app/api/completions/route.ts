@@ -96,7 +96,7 @@ export async function POST(request: NextRequest) {
       const { text, usage } = await generateText({
         model: openrouter(payload.openrouterModel!),
         messages: messages,
-        maxTokens: 1000,
+        maxTokens: 4000,
       });
       /** Don't directly set `modelResponse` to the OpenRouter response, as the
        * frontend expect a structure like that returned from an Anthropic call.
@@ -124,7 +124,7 @@ export async function POST(request: NextRequest) {
     try {
       const anthropicResponse = await anthropic.messages.create({
         model: "claude-sonnet-4-6",
-        max_tokens: 1000,
+        max_tokens: 4000,
         messages: [
           {
             role: "user",
