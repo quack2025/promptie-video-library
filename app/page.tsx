@@ -30,6 +30,7 @@ export default function Home() {
   const [ciudad, setCiudad] = useState<string>("");
   const [tipoConsumidor, setTipoConsumidor] = useState<string>("");
   const [topK, setTopK] = useState<number>(20);
+  const [maxChunksPerDocument, setMaxChunksPerDocument] = useState<number>(0);
   const [rerank, setRerank] = useState<boolean>(false);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [open, setOpen] = useState<boolean>(false);
@@ -42,7 +43,7 @@ export default function Home() {
 
     const response = await fetch("/api/completions", {
       method: "POST",
-      body: JSON.stringify({ systemPrompt, message, partition, topK, rerank, provider, openrouterModel, ciudad, tipoConsumidor }),
+      body: JSON.stringify({ systemPrompt, message, partition, topK, rerank, provider, openrouterModel, ciudad, tipoConsumidor, maxChunksPerDocument: maxChunksPerDocument || undefined }),
     });
 
     try {
@@ -96,6 +97,11 @@ export default function Home() {
     localStorage.setItem("rerank", value.toString());
   };
 
+  const handleMaxChunksPerDocumentChange = (value: string) => {
+    setMaxChunksPerDocument(parseInt(value));
+    localStorage.setItem("maxChunksPerDocument", value);
+  };
+
   const handleResetSystemPrompt = () => {
     setPendingSystemPrompt(DEFAULT_SYSTEM_PROMPT);
   };
@@ -128,6 +134,10 @@ export default function Home() {
     const savedTipoConsumidor = localStorage.getItem("tipoConsumidor");
     if (savedTipoConsumidor) {
       setTipoConsumidor(savedTipoConsumidor);
+    }
+    const savedMaxChunksPerDocument = localStorage.getItem("maxChunksPerDocument");
+    if (savedMaxChunksPerDocument) {
+      setMaxChunksPerDocument(parseInt(savedMaxChunksPerDocument));
     }
     const savedTopK = localStorage.getItem("topK");
     if (savedTopK) {
@@ -193,6 +203,21 @@ export default function Home() {
                 <option value="60">60</option>
                 <option value="80">80</option>
                 <option value="100">100</option>
+              </select>
+            </div>
+            <div className="text-sm flex items-center gap-2">
+              <label htmlFor="maxChunksPerDocument">Max/video:</label>
+              <select
+                name="maxChunksPerDocument"
+                className="border-1 border-gray-300 rounded-md p-2"
+                value={maxChunksPerDocument}
+                onChange={(e) => handleMaxChunksPerDocumentChange(e.target.value)}
+              >
+                <option value="0">Sin límite</option>
+                <option value="1">1</option>
+                <option value="2">2</option>
+                <option value="3">3</option>
+                <option value="5">5</option>
               </select>
             </div>
             <div className="text-sm text-gray-500 flex items-center gap-2">

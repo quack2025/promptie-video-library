@@ -23,6 +23,7 @@ const payloadSchema = z.object({
   openrouterModel: z.string(),
   ciudad: z.string().optional(),
   tipoConsumidor: z.string().optional(),
+  maxChunksPerDocument: z.number().optional(),
 });
 
 // CORS headers
@@ -58,13 +59,27 @@ export async function POST(request: NextRequest) {
       : { $and: conditions }
     : undefined;
 
+  // Fetch more chunks than requested so we can diversify across documents
+  const maxChunksPerDocument = payload.maxChunksPerDocument ?? 0;
+  const fetchTopK = maxChunksPerDocument > 0 ? Math.min(payload.topK * 3, 100) : payload.topK;
+
   const ragieResponse = await ragie.retrievals.retrieve({
     query: payload.message,
     partition: payload.partition,
-    topK: payload.topK,
+    topK: fetchTopK,
     rerank: false,
     filter,
   });
+
+  // Diversify: limit chunks per document to spread across more videos
+  if (maxChunksPerDocument > 0) {
+    const countByDoc: Record<string, number> = {};
+    ragieResponse.scoredChunks = ragieResponse.scoredChunks.filter((chunk) => {
+      const docId = chunk.documentId;
+      countByDoc[docId] = (countByDoc[docId] || 0) + 1;
+      return countByDoc[docId] <= maxChunksPerDocument;
+    }).slice(0, payload.topK);
+  }
 
   // ALWAYS use the server's DEFAULT_SYSTEM_PROMPT, ignore client's systemPrompt
   // This ensures consistent behavior regardless of what the client sends
