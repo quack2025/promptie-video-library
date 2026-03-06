@@ -58,9 +58,11 @@ export async function POST(request: NextRequest) {
       : { $and: conditions }
     : undefined;
 
-  // Fetch more chunks than requested so we can diversify across documents
+  // Fan-out retrieval: fetch a large pool, then guarantee every document
+  // (video) contributes at least minChunksPerDocument chunks before filling
+  // remaining slots by relevance score. This prevents 2 videos from dominating.
   const maxChunksPerDocument = payload.maxChunksPerDocument ?? 0;
-  const fetchTopK = maxChunksPerDocument > 0 ? Math.min(payload.topK * 3, 100) : payload.topK;
+  const fetchTopK = maxChunksPerDocument > 0 ? Math.min(payload.topK * 5, 100) : payload.topK;
 
   const ragieResponse = await ragie.retrievals.retrieve({
     query: payload.message,
@@ -70,14 +72,57 @@ export async function POST(request: NextRequest) {
     filter,
   });
 
-  // Diversify: limit chunks per document to spread across more videos
-  if (maxChunksPerDocument > 0) {
-    const countByDoc: Record<string, number> = {};
-    ragieResponse.scoredChunks = ragieResponse.scoredChunks.filter((chunk) => {
+  if (maxChunksPerDocument > 0 && ragieResponse.scoredChunks.length > 0) {
+    // Group chunks by document
+    const chunksByDoc = new Map<string, typeof ragieResponse.scoredChunks>();
+    for (const chunk of ragieResponse.scoredChunks) {
       const docId = chunk.documentId;
-      countByDoc[docId] = (countByDoc[docId] || 0) + 1;
-      return countByDoc[docId] <= maxChunksPerDocument;
-    }).slice(0, payload.topK);
+      if (!chunksByDoc.has(docId)) chunksByDoc.set(docId, []);
+      chunksByDoc.get(docId)!.push(chunk);
+    }
+
+    const totalDocs = chunksByDoc.size;
+    // Guarantee at least minPerDoc chunks from each document (1 if we have
+    // many docs, otherwise distribute evenly up to maxChunksPerDocument)
+    const minPerDoc = Math.max(1, Math.min(
+      maxChunksPerDocument,
+      Math.floor(payload.topK / totalDocs)
+    ));
+
+    const selected: typeof ragieResponse.scoredChunks = [];
+    const usedIds = new Set<string>();
+
+    // Phase 1: Round-robin — take minPerDoc from each document (by score)
+    for (const [, docChunks] of chunksByDoc) {
+      for (let i = 0; i < Math.min(minPerDoc, docChunks.length); i++) {
+        selected.push(docChunks[i]);
+        usedIds.add(docChunks[i].id);
+      }
+    }
+
+    // Phase 2: Fill remaining slots from all chunks by score, respecting maxChunksPerDocument
+    const remaining = payload.topK - selected.length;
+    if (remaining > 0) {
+      const countByDoc: Record<string, number> = {};
+      for (const chunk of selected) {
+        countByDoc[chunk.documentId] = (countByDoc[chunk.documentId] || 0) + 1;
+      }
+
+      const candidates = ragieResponse.scoredChunks
+        .filter((c) => !usedIds.has(c.id))
+        .filter((c) => {
+          const count = countByDoc[c.documentId] || 0;
+          if (count >= maxChunksPerDocument) return false;
+          countByDoc[c.documentId] = count + 1;
+          return true;
+        });
+
+      selected.push(...candidates.slice(0, remaining));
+    }
+
+    // Sort final selection by score descending (best first for LLM context)
+    selected.sort((a, b) => b.score - a.score);
+    ragieResponse.scoredChunks = selected;
   }
 
   // ALWAYS use the server's DEFAULT_SYSTEM_PROMPT, ignore client's systemPrompt

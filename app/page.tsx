@@ -29,8 +29,8 @@ export default function Home() {
   const [partition, setPartition] = useState<string>("inspira");
   const [ciudad, setCiudad] = useState<string>("");
   const [tipoConsumidor, setTipoConsumidor] = useState<string>("");
-  const [topK, setTopK] = useState<number>(20);
-  const [maxChunksPerDocument, setMaxChunksPerDocument] = useState<number>(0);
+  const [topK, setTopK] = useState<number>(30);
+  const [maxChunksPerDocument, setMaxChunksPerDocument] = useState<number>(5);
   const [rerank, setRerank] = useState<boolean>(false);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
@@ -207,6 +207,7 @@ export default function Home() {
               >
                 <option value="8">8</option>
                 <option value="20">20</option>
+                <option value="30">30</option>
                 <option value="40">40</option>
                 <option value="60">60</option>
                 <option value="80">80</option>
