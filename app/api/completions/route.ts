@@ -156,7 +156,7 @@ export async function POST(request: NextRequest) {
       const { text, usage } = await generateText({
         model: openrouter(payload.openrouterModel!),
         messages: messages,
-        maxTokens: 4000,
+        maxTokens: 8000,
       });
 
       modelResponse = {
@@ -182,7 +182,7 @@ export async function POST(request: NextRequest) {
     try {
       const anthropicResponse = await anthropic.messages.create({
         model: ANTHROPIC_MODEL,
-        max_tokens: 4000,
+        max_tokens: 8000,
         messages: [
           {
             role: "user",
