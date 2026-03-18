@@ -180,30 +180,31 @@ export async function POST(request: NextRequest) {
   } else {
     // Default to Anthropic with citations enabled
     try {
+      const documentBlocks: Anthropic.DocumentBlockParam[] = ragieResponse.scoredChunks.map((chunk) => ({
+        type: "document" as const,
+        source: {
+          type: "text" as const,
+          media_type: "text/plain" as const,
+          data: chunk.text,
+        },
+        title: chunk.documentName,
+        citations: { enabled: true },
+      }));
+
       const anthropicResponse = await anthropic.messages.create({
         model: ANTHROPIC_MODEL,
-        max_tokens: 8000,
+        max_tokens: 16000,
+        system: systemPromptContent,
         messages: [
           {
             role: "user",
-            content: systemPromptContent,
-          },
-          {
-            role: "user",
-            content: ragieResponse.scoredChunks.map((chunk) => ({
-              type: "document" as const,
-              source: {
+            content: [
+              ...documentBlocks,
+              {
                 type: "text" as const,
-                media_type: "text/plain",
-                data: chunk.text,
+                text: payload.message,
               },
-              title: chunk.documentName,
-              citations: { enabled: true },
-            })),
-          },
-          {
-            role: "user",
-            content: payload.message,
+            ],
           },
         ],
       });
