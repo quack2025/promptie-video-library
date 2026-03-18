@@ -1,6 +1,7 @@
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { useCallback, useEffect, useState } from "react";
 import Markdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 import { z } from "zod";
 import { Citation } from "../lib/types";
 
@@ -135,7 +136,7 @@ export default function CitationDialog({
             <div className="pt-4">
               <h2 className="font-bold">Summary</h2>
               <div className="text-sm text-gray-500">
-                <Markdown className="markdown">{summary}</Markdown>
+                <Markdown className="markdown" remarkPlugins={[remarkGfm]}>{summary}</Markdown>
               </div>
             </div>
           )}

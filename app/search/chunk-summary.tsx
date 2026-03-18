@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import Markdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 
 export default function ChunkSummary({ chunk }: { chunk: any }) {
   const [summary, setSummary] = useState<string>("");
@@ -31,7 +32,7 @@ export default function ChunkSummary({ chunk }: { chunk: any }) {
   return (
     <div className="flex flex-col gap-2">
       {isLoading && <p>Loading...</p>}
-      {!isLoading && <Markdown className="markdown">{summary}</Markdown>}
+      {!isLoading && <Markdown className="markdown" remarkPlugins={[remarkGfm]}>{summary}</Markdown>}
     </div>
   );
 }

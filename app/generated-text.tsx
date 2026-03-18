@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { completionSchema } from "../lib/types";
 import Markdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 import { useState } from "react";
 import { Citation } from "../lib/types";
 import CitationDialog from "./citation-dialog";
@@ -63,6 +64,7 @@ export default function GeneratedText({completion, partition}: GeneratedTextProp
     <div>
       <Markdown
         className="markdown"
+        remarkPlugins={[remarkGfm]}
         components={{
           a: ({href, children}) => {
             return <a href={href} onClick={handleCitationClick} target="_blank" rel="noopener noreferrer">{children}</a>
