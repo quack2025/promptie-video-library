@@ -180,16 +180,32 @@ export async function POST(request: NextRequest) {
   } else {
     // Default to Anthropic with citations enabled
     try {
-      const documentBlocks: Anthropic.DocumentBlockParam[] = ragieResponse.scoredChunks.map((chunk) => ({
-        type: "document" as const,
-        source: {
-          type: "text" as const,
-          media_type: "text/plain" as const,
-          data: chunk.text,
-        },
-        title: chunk.documentName,
-        citations: { enabled: true },
-      }));
+      const documentBlocks: Anthropic.DocumentBlockParam[] = ragieResponse.scoredChunks.map((chunk) => {
+        // Extract readable text from JSON chunks (Ragie video chunks are JSON with
+        // context, video_description, and audio_transcript fields). Anthropic's
+        // citation system needs plain text to generate proper char_location citations.
+        let plainText = chunk.text;
+        try {
+          const parsed = JSON.parse(chunk.text);
+          const parts: string[] = [];
+          if (parsed.video_description) parts.push(parsed.video_description);
+          if (parsed.audio_transcript) parts.push(`Transcripcion: ${parsed.audio_transcript}`);
+          if (parts.length > 0) plainText = parts.join("\n\n");
+        } catch {
+          // Not JSON — use raw text as-is
+        }
+
+        return {
+          type: "document" as const,
+          source: {
+            type: "text" as const,
+            media_type: "text/plain" as const,
+            data: plainText,
+          },
+          title: chunk.documentName,
+          citations: { enabled: true },
+        };
+      });
 
       const anthropicResponse = await anthropic.messages.create({
         model: ANTHROPIC_MODEL,

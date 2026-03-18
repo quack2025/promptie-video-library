@@ -38,7 +38,7 @@ export default function LoginPage() {
   return (
     <div className="min-h-screen flex items-center justify-center">
       <div className="w-full max-w-sm p-6 border border-gray-300 rounded-lg">
-        <h1 className="text-2xl font-bold mb-1">Inspira</h1>
+        <h1 className="text-2xl font-bold mb-1">InsightGenius</h1>
         <p className="text-sm text-gray-500 mb-6">Inicia sesión para continuar</p>
         <form onSubmit={handleSubmit} className="flex flex-col gap-4">
           <input

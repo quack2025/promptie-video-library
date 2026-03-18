@@ -171,6 +171,17 @@ export default function Home() {
           />
           <div className="flex gap-4 pt-2 flex-wrap items-center">
             <div className="text-sm flex items-center gap-2">
+              <label htmlFor="partition">Particion:</label>
+              <input
+                type="text"
+                name="partition"
+                className="border-1 border-gray-300 rounded-md p-2 w-32"
+                value={partition}
+                onChange={(e) => handlePartitionChange(e.target.value)}
+                placeholder="default"
+              />
+            </div>
+            <div className="text-sm flex items-center gap-2">
               <label htmlFor="ciudad">Ciudad:</label>
               <select
                 name="ciudad"

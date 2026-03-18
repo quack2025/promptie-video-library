@@ -15,8 +15,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Inspira",
-  description: "Inspira - Video Library",
+  title: "InsightGenius",
+  description: "InsightGenius - RAG Video Testing Tool",
 };
 
 export default function RootLayout({
@@ -32,9 +32,9 @@ export default function RootLayout({
         <div className="flex flex-col max-w-4xl mx-auto h-full p-4">
           <header className="flex items-center justify-between pb-4">
               <div className="flex flex-col">
-                <h1 className="text-2xl font-bold">Inspira</h1>
+                <h1 className="text-2xl font-bold">InsightGenius</h1>
                 <p className="text-sm text-gray-500">
-                  Video Library
+                  RAG Video Testing Tool
                 </p>
               </div>
               <LogoutButton />
