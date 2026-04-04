@@ -82,8 +82,6 @@ export async function POST(request: NextRequest) {
     }
 
     const totalDocs = chunksByDoc.size;
-    // Guarantee at least minPerDoc chunks from each document (1 if we have
-    // many docs, otherwise distribute evenly up to maxChunksPerDocument)
     const minPerDoc = Math.max(1, Math.min(
       maxChunksPerDocument,
       Math.floor(payload.topK / totalDocs)
@@ -120,19 +118,15 @@ export async function POST(request: NextRequest) {
       selected.push(...candidates.slice(0, remaining));
     }
 
-    // Sort final selection by score descending (best first for LLM context)
     selected.sort((a, b) => b.score - a.score);
     ragieResponse.scoredChunks = selected;
   }
 
   // ALWAYS use the server's DEFAULT_SYSTEM_PROMPT, ignore client's systemPrompt
-  // This ensures consistent behavior regardless of what the client sends
   const compiled = Handlebars.compile(DEFAULT_SYSTEM_PROMPT);
   const systemPromptContent = compiled({
     now: new Date().toISOString(),
   });
-
-  let modelResponse;
 
   // Always use Anthropic unless explicitly set to openrouter AND key is available
   if (payload.provider === "openrouter" && OPENROUTER_API_KEY) {
@@ -159,7 +153,7 @@ export async function POST(request: NextRequest) {
         maxTokens: 8000,
       });
 
-      modelResponse = {
+      const modelResponse = {
         id: `openrouter-${Date.now()}`,
         type: "message",
         role: "assistant",
@@ -170,6 +164,20 @@ export async function POST(request: NextRequest) {
           output_tokens: usage.completionTokens,
         },
       };
+
+      // OpenRouter: return as NDJSON stream (retrieval + complete, no deltas)
+      const encoder = new TextEncoder();
+      const stream = new ReadableStream({
+        start(controller) {
+          controller.enqueue(encoder.encode(JSON.stringify({ type: "retrieval", data: ragieResponse }) + "\n"));
+          controller.enqueue(encoder.encode(JSON.stringify({ type: "complete", modelResponse }) + "\n"));
+          controller.close();
+        }
+      });
+
+      return new Response(stream, {
+        headers: { "Content-Type": "application/x-ndjson", ...corsHeaders }
+      });
     } catch (error) {
       console.error("OpenRouter API error:", error);
       return NextResponse.json(
@@ -178,68 +186,83 @@ export async function POST(request: NextRequest) {
       );
     }
   } else {
-    // Default to Anthropic with citations enabled
-    try {
-      const documentBlocks: Anthropic.DocumentBlockParam[] = ragieResponse.scoredChunks.map((chunk) => {
-        // Extract readable text from JSON chunks (Ragie video chunks are JSON with
-        // context, video_description, and audio_transcript fields). Anthropic's
-        // citation system needs plain text to generate proper char_location citations.
-        let plainText = chunk.text;
-        try {
-          const parsed = JSON.parse(chunk.text);
-          const parts: string[] = [];
-          if (parsed.video_description) parts.push(parsed.video_description);
-          if (parsed.audio_transcript) parts.push(`Transcripcion: ${parsed.audio_transcript}`);
-          if (parts.length > 0) plainText = parts.join("\n\n");
-        } catch {
-          // Not JSON — use raw text as-is
-        }
+    // Anthropic: stream response with citations
+    const documentBlocks: Anthropic.DocumentBlockParam[] = ragieResponse.scoredChunks.map((chunk) => {
+      let plainText = chunk.text;
+      try {
+        const parsed = JSON.parse(chunk.text);
+        const parts: string[] = [];
+        if (parsed.video_description) parts.push(parsed.video_description);
+        if (parsed.audio_transcript) parts.push(`Transcripcion: ${parsed.audio_transcript}`);
+        if (parts.length > 0) plainText = parts.join("\n\n");
+      } catch {
+        // Not JSON — use raw text as-is
+      }
 
-        return {
-          type: "document" as const,
-          source: {
-            type: "text" as const,
-            media_type: "text/plain" as const,
-            data: plainText,
-          },
-          title: chunk.documentName,
-          citations: { enabled: true },
+      return {
+        type: "document" as const,
+        source: {
+          type: "text" as const,
+          media_type: "text/plain" as const,
+          data: plainText,
+        },
+        title: chunk.documentName,
+        citations: { enabled: true },
+      };
+    });
+
+    const encoder = new TextEncoder();
+    const stream = new ReadableStream({
+      async start(controller) {
+        const send = (event: Record<string, unknown>) => {
+          controller.enqueue(encoder.encode(JSON.stringify(event) + "\n"));
         };
-      });
 
-      const anthropicResponse = await anthropic.messages.create({
-        model: ANTHROPIC_MODEL,
-        max_tokens: 16000,
-        system: systemPromptContent,
-        messages: [
-          {
-            role: "user",
-            content: [
-              ...documentBlocks,
+        try {
+          // Send retrieval data first so frontend can show chunk count
+          send({ type: "retrieval", data: ragieResponse });
+
+          // Stream Anthropic response
+          const anthropicStream = anthropic.messages.stream({
+            model: ANTHROPIC_MODEL,
+            max_tokens: 16000,
+            system: systemPromptContent,
+            messages: [
               {
-                type: "text" as const,
-                text: payload.message,
+                role: "user",
+                content: [
+                  ...documentBlocks,
+                  { type: "text" as const, text: payload.message },
+                ],
               },
             ],
-          },
-        ],
-      });
-      modelResponse = anthropicResponse;
-    } catch (error) {
-      console.error("Anthropic API error:", error);
-      const message = error instanceof Error ? error.message : "Unknown Anthropic error";
-      return NextResponse.json(
-        { error: `Anthropic API failed: ${message}` },
-        { status: 500, headers: corsHeaders }
-      );
-    }
-  }
+          });
 
-  return NextResponse.json(
-    {
-      modelResponse: modelResponse,
-      retrievalResponse: ragieResponse,
-    },
-    { headers: corsHeaders }
-  );
+          // Send text deltas as they arrive
+          for await (const event of anthropicStream) {
+            if (
+              event.type === "content_block_delta" &&
+              event.delta.type === "text_delta"
+            ) {
+              send({ type: "delta", text: event.delta.text });
+            }
+          }
+
+          // Send full response with citations at the end
+          const finalMessage = await anthropicStream.finalMessage();
+          send({ type: "complete", modelResponse: finalMessage });
+        } catch (error) {
+          console.error("Anthropic streaming error:", error);
+          const message = error instanceof Error ? error.message : "Unknown Anthropic error";
+          send({ type: "error", message });
+        }
+
+        controller.close();
+      }
+    });
+
+    return new Response(stream, {
+      headers: { "Content-Type": "application/x-ndjson", ...corsHeaders }
+    });
+  }
 }
